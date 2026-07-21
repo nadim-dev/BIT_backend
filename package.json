@@ -5,11 +5,13 @@
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dompurify": "^3.4.12",
     "express": "^5.2.1",
     "jsdom": "^29.1.1",
     "mongoose": "^9.7.4",
+    "redis": "^6.1.0",
     "zod": "^4.4.3"
   }
 }

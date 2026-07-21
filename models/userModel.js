@@ -29,11 +29,6 @@ userSchema.pre("save",async function (){
   this.password=await bcrypt.hash(this.password,10);
 })
 
-//* method to comapre password
-
-userSchema.methods.comparePassword=async function(enteredPasswrod) {
-  return await bcrypt.compare(enteredPasswrod,this.password)
-}
 
 const User=model("User",userSchema);
 export default User;

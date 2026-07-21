@@ -1,7 +1,9 @@
-import { registerSchema } from "../validators/authValidator.js";
+import { registerSchema,loginSchema } from "../validators/authValidator.js";
 import User from "../models/userModel.js";
 import { sanitize } from "../utils/sanitize.js";
-
+import bcrypt from "bcrypt";
+import redisClient from "../config/redis.js";
+import crypto from "crypto";
 
 export const registerUser = async (req, res) => {
   console.log("Register controller function is running");
@@ -35,5 +37,50 @@ export const registerUser = async (req, res) => {
 };
 
 export const loginUser = async (req, res) => {
-  // ...
-};
+  console.log("Login controller function is running");
+  try{
+  const { success, data, error} = loginSchema.safeParse(req.body);
+
+  if(!success){
+    return res.status(400).json({"message":"Invalid input"})
+  }
+
+  const {password,email}=sanitize(data);
+
+  const user=await User.findOne({email:email}).lean();
+
+  if (!user)
+    return res.status(404).json({"message":"user not found"});
+ 
+  const isPasswordValid = await bcrypt.compare(
+      password, // plain password from login
+      user.password, // hashed password from DB
+    );
+
+  console.log("isPassowrdVlaid",isPasswordValid);   
+
+    if (!isPasswordValid)
+      return res.status(400).json({ "message": "Invalid credential" });
+
+    const sessionId = crypto.randomUUID();
+    const sessionExpiryTime = 7 * 24 * 60 * 60;
+    const rediskey = `session:${sessionId}`;
+    await redisClient.hSet(rediskey, {
+      userId: user._id.toString(),
+      createdAt: Date.now(),
+    });
+    await redisClient.expire(rediskey, sessionExpiryTime);
+
+    res.cookie("sid", sessionId, {
+      httpOnly: true,
+      signed: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "none",
+      maxAge: sessionExpiryTime * 1000,
+    });
+
+    return res.status(200).json({ message: "Login successful" });
+}catch(err){
+    console.log(err.message);
+    return res.status(500).json({"message":"Internal Server Error"});
+}};
